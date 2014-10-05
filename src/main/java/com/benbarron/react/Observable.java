@@ -7,15 +7,12 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
+import java.util.function.*;
 
 public interface Observable<T> {
 	
 	<R> Observable<R> action(BiConsumer<T, Observer<R>> action);
-	
+
 	default Observable<T> distinct() {
 		Set<T> items = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -79,6 +76,15 @@ public interface Observable<T> {
     default Observable<T> observeOn(ExecutorService executorService) {
         return action((T item, Observer<T> observer) -> {
             executorService.submit(() -> observer.onNext(item));
+        });
+    }
+
+    //ConnectableObservable<T> publish();
+
+    default Observable<T> run(Consumer<T> consumer) {
+        return action((T item, Observer<T> observer) -> {
+            consumer.accept(item);
+            observer.onNext(item);
         });
     }
 	
