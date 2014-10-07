@@ -79,7 +79,7 @@ public interface Observable<T> {
         });
     }
 
-    //ConnectableObservable<T> publish();
+    ConnectableObservable<T> publish();
 
     default Observable<T> run(Consumer<T> consumer) {
         return action((T item, Observer<T> observer) -> {

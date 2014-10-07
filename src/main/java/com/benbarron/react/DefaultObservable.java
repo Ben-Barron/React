@@ -1,56 +1,53 @@
 package com.benbarron.react;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 
 class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
 
+    private final BiConsumer<I, Observer<O>> action;
     private final Set<Observable<I>> previous = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Set<AutoCloseable> closables = Collections.newSetFromMap(new ConcurrentHashMap<>());
-	private final BiConsumer<I, Observer<O>> action;
+    private final Set<AutoCloseable> closables = new HashSet<>();
 	private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
-    private final AtomicBoolean isCompleted = new AtomicBoolean(false);
-    private final AtomicBoolean isErrored = new AtomicBoolean(false);
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
+    private final AtomicInteger completeCount = new AtomicInteger(0);
 
+    private volatile Observer<O> next;
     private volatile ExecutorService subscribeOn;
-	private volatile Observer<O> next;
 
-    DefaultObservable(BiConsumer<I, Observer<O>> action, Observable<I> previous) {
+    @SafeVarargs
+    DefaultObservable(BiConsumer<I, Observer<O>> action, Observable<I> ... previous) {
         this.action = action;
-
-        if (previous != null) {
-            this.previous.add(previous);
-        }
+        Collections.addAll(this.previous, previous);
     }
 
 	@Override
 	public <R> Observable<R> action(BiConsumer<O, Observer<R>> action) {
-		return new DefaultObservable<>(action, this);
+        return new DefaultObservable<>(action, this);
 	}
 	
 	@Override
 	public void onComplete() {
-        if (isCompleted.compareAndSet(false, true)) {
-            next.onComplete();
+        if (completeCount.incrementAndGet() == previous.size()) {
+            runThenClose(next::onComplete);
         }
 	}
 
 	@Override
 	public void onError(Throwable throwable) {
-        if (isErrored.compareAndSet(false, true)) {
-            next.onError(throwable);
-        }
+        runThenClose(() -> next.onError(throwable));
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
+    @SuppressWarnings("unchecked")
 	public void onNext(I item) {
-        if (isCompleted.get() || isClosed.get() || isErrored.get()) {
+        if (isClosed.get()) {
             return;
         }
 
@@ -65,13 +62,14 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
 		}
 	}
 
-
     @Override
     public Observable<O> merge(Observable<O> observable) {
-        DefaultObservable<O, O> newObservable = new DefaultObservable<>(null, this);
-        newObservable.previous.add(observable);
+        return new DefaultObservable<>(null, this, observable);
+    }
 
-        return newObservable;
+    @Override
+    public ConnectableObservable<O> publish() {
+        return null; // TODO write
     }
 
     @Override
@@ -81,44 +79,48 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
         if (isSubscribed.compareAndSet(false, true)) {
             observable = this;
         } else {
-            observable = new DefaultObservable<>(action, null);
+            observable = new DefaultObservable<>(action);
             observable.previous.addAll(previous);
         }
 
         observable.next = observer;
 
         if (subscribeOn != null) {
-            subscribeOn.submit(() -> {
-                if (!observable.previous.isEmpty()) {
-                    observable.previous.forEach(i -> observable.closables.add(i.subscribe(observable)));
-                } else {
-                    action.accept(null, next);
-                }
-            });
+            subscribeOn.submit(() -> internalSubscribe(observable));
         } else {
-            if (!observable.previous.isEmpty()) {
-                observable.previous.forEach(i -> observable.closables.add(i.subscribe(observable)));
-            } else {
-                action.accept(null, next);
-            }
+            internalSubscribe(observable);
         }
 
-        return () -> {
-            if (isClosed.compareAndSet(false, true)) {
-                for (AutoCloseable closable : closables) {
-                    try {
-                        closable.close();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        };
+        return () -> runThenClose(null);
     }
 
     @Override
     public Observable<O> subscribeOn(ExecutorService executorService) {
         subscribeOn = executorService;
         return this;
+    }
+
+    private void internalSubscribe(DefaultObservable<I, O> observable) {
+        if (!observable.previous.isEmpty()) {
+            observable.previous.forEach(i -> observable.closables.add(i.subscribe(observable)));
+        } else {
+            observable.action.accept(null, next);
+        }
+    }
+
+    private void runThenClose(Runnable runnable) {
+        if (isClosed.compareAndSet(false, true)) {
+            if (runnable != null) {
+                runnable.run();
+            }
+
+            for (AutoCloseable closable : closables) {
+                try {
+                    closable.close();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
     }
 }
