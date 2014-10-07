@@ -11,15 +11,15 @@ import java.util.function.BiConsumer;
 
 class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
 
-    private final BiConsumer<I, Observer<O>> action;
-    private final Set<Observable<I>> previous = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Set<AutoCloseable> closables = new HashSet<>();
-    private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
-    private final AtomicBoolean isClosed = new AtomicBoolean(false);
-    private final AtomicInteger completeCount = new AtomicInteger(0);
+    protected final BiConsumer<I, Observer<O>> action;
+    protected final Set<Observable<I>> previous = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    protected final Set<AutoCloseable> closables = new HashSet<>();
+    protected final AtomicBoolean isSubscribed = new AtomicBoolean(false);
+    protected final AtomicBoolean isClosed = new AtomicBoolean(false);
+    protected final AtomicInteger completeCount = new AtomicInteger(0);
 
-    private volatile Observer<O> next;
-    private volatile ExecutorService subscribeOn;
+    protected volatile Observer<O> next;
+    protected volatile ExecutorService subscribeOn;
 
     @SafeVarargs
     DefaultObservable(BiConsumer<I, Observer<O>> action, Observable<I> ... previous) {
