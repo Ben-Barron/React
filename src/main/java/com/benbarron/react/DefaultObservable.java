@@ -14,7 +14,7 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
     private final BiConsumer<I, Observer<O>> action;
     private final Set<Observable<I>> previous = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<AutoCloseable> closables = new HashSet<>();
-	private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
+    private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
     private final AtomicInteger completeCount = new AtomicInteger(0);
 
@@ -27,40 +27,40 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
         Collections.addAll(this.previous, previous);
     }
 
-	@Override
-	public <R> Observable<R> action(BiConsumer<O, Observer<R>> action) {
+    @Override
+    public <R> Observable<R> action(BiConsumer<O, Observer<R>> action) {
         return new DefaultObservable<>(action, this);
-	}
-	
-	@Override
-	public void onComplete() {
+    }
+
+    @Override
+    public void onComplete() {
         if (completeCount.incrementAndGet() == previous.size()) {
             runThenClose(next::onComplete);
         }
-	}
+    }
 
-	@Override
-	public void onError(Throwable throwable) {
+    @Override
+    public void onError(Throwable throwable) {
         runThenClose(() -> next.onError(throwable));
-	}
+    }
 
-	@Override
+    @Override
     @SuppressWarnings("unchecked")
-	public void onNext(I item) {
+    public void onNext(I item) {
         if (isClosed.get()) {
             return;
         }
 
-		try {
+        try {
             if (action != null) {
                 action.accept(item, next);
             } else {
                 next.onNext((O) item);
             }
-		} catch (Exception e) {
-			onError(e);
-		}
-	}
+        } catch (Exception e) {
+            onError(e);
+        }
+    }
 
     @Override
     public Observable<O> merge(Observable<O> observable) {

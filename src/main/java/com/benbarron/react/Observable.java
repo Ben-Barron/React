@@ -10,24 +10,24 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.*;
 
 public interface Observable<T> {
-	
-	<R> Observable<R> action(BiConsumer<T, Observer<R>> action);
 
-	default Observable<T> distinct() {
-		Set<T> items = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    <R> Observable<R> action(BiConsumer<T, Observer<R>> action);
 
-		return action((T item, Observer<T> observer) -> {
-			if (items.add(item)) {
-				observer.onNext(item);
-			}
-		});
-	}
-	
-	default Optional<T> first() {
-		return Optional.ofNullable(firstOrDefault());
-	}
-	
-	default T firstOrDefault() {
+    default Observable<T> distinct() {
+        Set<T> items = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        return action((T item, Observer<T> observer) -> {
+            if (items.add(item)) {
+                observer.onNext(item);
+            }
+        });
+    }
+
+    default Optional<T> first() {
+        return Optional.ofNullable(firstOrDefault());
+    }
+
+    default T firstOrDefault() {
         ArrayBlockingQueue<T> queue = new ArrayBlockingQueue<>(1);
 
         subscribe(queue::add,() -> queue.add(null), t -> { throw new RuntimeException(t); });
@@ -38,16 +38,16 @@ public interface Observable<T> {
             throw new RuntimeException(e);
         }
     }
-	
-	default Observable<T> filter(Predicate<T> predicate) {
-		return action((T item, Observer<T> observer) -> {
-			if (predicate.test(item)) {
-				observer.onNext(item);
-			}
-		});
-	}
-	
-	default Observable<T> limit(long limit) {
+
+    default Observable<T> filter(Predicate<T> predicate) {
+        return action((T item, Observer<T> observer) -> {
+            if (predicate.test(item)) {
+                observer.onNext(item);
+            }
+        });
+    }
+
+    default Observable<T> limit(long limit) {
         AtomicLong count = new AtomicLong(0);
 
         return action((T item, Observer<T> observer) -> {
@@ -57,19 +57,19 @@ public interface Observable<T> {
                 observer.onNext(item);
             }
         });
-	}
-	
-	default <R> Observable<R> map(Function<T, R> transform) {
-		return action((T item, Observer<R> observer) -> {
-			observer.onNext(transform.apply(item));
-		});
-	}
-	
-	default <R> Observable<R> mapMany(Function<T, Iterable<R>> transform) {
-		return action((T item, Observer<R> observer) -> {
-			transform.apply(item).forEach(observer::onNext);
-		});
-	}
+    }
+
+    default <R> Observable<R> map(Function<T, R> transform) {
+        return action((T item, Observer<R> observer) -> {
+            observer.onNext(transform.apply(item));
+        });
+    }
+
+    default <R> Observable<R> mapMany(Function<T, Iterable<R>> transform) {
+        return action((T item, Observer<R> observer) -> {
+            transform.apply(item).forEach(observer::onNext);
+        });
+    }
 
     Observable<T> merge(Observable<T> observable);
 
@@ -87,21 +87,21 @@ public interface Observable<T> {
             observer.onNext(item);
         });
     }
-	
-	default Observable<T> skip(long skip) {
-		AtomicLong count = new AtomicLong(0);
-		
-		return action((T item, Observer<T> observer) -> {
-			if (count.incrementAndGet() > skip) {
-				observer.onNext(item);
-			}
-		});
-	}
 
-	default AutoCloseable subscribe() { return subscribe(i -> {}, () -> {}, t -> {}); }
-	default AutoCloseable subscribe(Consumer<T> onNext) { return subscribe(onNext, () -> {}, t -> {}); }
-	default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete) { return subscribe(onNext, onComplete, t -> {}); }
-	default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete, Consumer<Throwable> onError) {
+    default Observable<T> skip(long skip) {
+        AtomicLong count = new AtomicLong(0);
+
+        return action((T item, Observer<T> observer) -> {
+            if (count.incrementAndGet() > skip) {
+                observer.onNext(item);
+            }
+        });
+    }
+
+    default AutoCloseable subscribe() { return subscribe(i -> {}, () -> {}, t -> {}); }
+    default AutoCloseable subscribe(Consumer<T> onNext) { return subscribe(onNext, () -> {}, t -> {}); }
+    default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete) { return subscribe(onNext, onComplete, t -> {}); }
+    default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete, Consumer<Throwable> onError) {
         return subscribe(new Observer<T>() {
 
             @Override
