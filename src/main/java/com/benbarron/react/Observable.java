@@ -116,9 +116,18 @@ public interface Observable<T> {
         });
     }
 
-    default AutoCloseable subscribe() { return subscribe(i -> {}, () -> {}, t -> {}); }
-    default AutoCloseable subscribe(Consumer<T> onNext) { return subscribe(onNext, () -> {}, t -> {}); }
-    default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete) { return subscribe(onNext, onComplete, t -> {}); }
+    default AutoCloseable subscribe() {
+        return subscribe(i -> {}, () -> {}, t -> {});
+    }
+
+    default AutoCloseable subscribe(Consumer<T> onNext) {
+        return subscribe(onNext, () -> {}, t -> {});
+    }
+
+    default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete) {
+        return subscribe(onNext, onComplete, t -> {});
+    }
+    
     default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete, Consumer<Throwable> onError) {
         return subscribe(new Observer<T>() {
 
