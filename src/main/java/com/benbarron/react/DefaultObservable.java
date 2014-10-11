@@ -14,12 +14,12 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
     protected final BiConsumer<I, Observer<O>> action;
     protected final Set<Observable<I>> previous = Collections.newSetFromMap(new ConcurrentHashMap<>());
     protected final Set<AutoCloseable> closables = new HashSet<>();
-    protected final AtomicBoolean isSubscribed = new AtomicBoolean(false);
-    protected final AtomicBoolean isClosed = new AtomicBoolean(false);
     protected final AtomicInteger completeCount = new AtomicInteger(0);
+    private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
+    private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-    protected volatile Observer<O> next;
-    protected volatile ExecutorService subscribeOn;
+    private volatile Observer<O> next;
+    private volatile ExecutorService subscribeOn;
 
     @SafeVarargs
     DefaultObservable(BiConsumer<I, Observer<O>> action, Observable<I> ... previous) {
@@ -69,7 +69,7 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
 
     @Override
     public ConnectableObservable<O> publish() {
-        return null; // TODO write
+        return new DefaultConnectableObservable<>(this);
     }
 
     @Override

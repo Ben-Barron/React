@@ -4,6 +4,8 @@ public class Example {
 
     public static void main(String[] args) {
         Observable<Integer> observable = Observables.generate(observer -> {
+            System.out.println("Subscribe");
+
             observer.onNext(1);
             observer.onNext(2);
             observer.onNext(3);
@@ -19,7 +21,15 @@ public class Example {
             observer.onComplete();
         });
 
-        observable.map(i -> i.toString())
-                .subscribe(System.out::println,() -> System.out.println("complete"), t -> System.out.println(t.getMessage()));
+        ConnectableObservable<String> hot = observable.map(i -> i.toString())
+                .publish();
+
+        hot.subscribe(System.out::println,() -> System.out.println("complete1"), t -> System.out.println(t.getMessage()));
+        hot.subscribe(System.out::println,() -> System.out.println("complete2"), t -> System.out.println(t.getMessage()));
+        hot.subscribe(System.out::println,() -> System.out.println("complete3"), t -> System.out.println(t.getMessage()));
+
+        hot.connect();
+
+
     }
 }

@@ -7,6 +7,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.*;
 
 public interface Observable<T> {
@@ -45,6 +46,23 @@ public interface Observable<T> {
                 observer.onNext(item);
             }
         });
+    }
+
+    default Optional<T> last() {
+        return Optional.ofNullable(lastOrDefault());
+    }
+
+    default T lastOrDefault() {
+        AtomicReference<T> last = new AtomicReference<>(null);
+        ArrayBlockingQueue<T> queue = new ArrayBlockingQueue<>(1);
+
+        subscribe(last::set,() -> queue.add(last.get()), t -> { throw new RuntimeException(t); });
+
+        try {
+            return queue.take();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     default Observable<T> limit(long limit) {

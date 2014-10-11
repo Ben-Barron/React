@@ -38,17 +38,28 @@ class DefaultConnectableObservable<I, O> extends DefaultObservable<I, O> impleme
 
     @Override
     public void onComplete() {
-
+        if (completeCount.incrementAndGet() == previous.size()) {
+            runThenClose(() -> next.forEach(Observer::onComplete));
+        }
     }
 
     @Override
     public void onError(Throwable throwable) {
-
+        runThenClose(() -> next.forEach(n -> n.onError(throwable)));
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void onNext(I item) {
+        if (!isConnected.get()) {
+            return;
+        }
 
+        try {
+            next.forEach(n -> n.onNext((O) item));
+        } catch (Exception e) {
+            next.forEach(n -> n.onError(e));
+        }
     }
 
     @Override
@@ -60,5 +71,21 @@ class DefaultConnectableObservable<I, O> extends DefaultObservable<I, O> impleme
     public AutoCloseable subscribe(Observer<O> observer) {
         next.add(observer);
         return () -> next.remove(observer);
+    }
+
+    private void runThenClose(Runnable runnable) {
+        if (isConnected.compareAndSet(true, false)) {
+            runnable.run();
+
+            for (AutoCloseable closable : closables) {
+                try {
+                    closable.close();
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            closables.clear();
+        }
     }
 }
