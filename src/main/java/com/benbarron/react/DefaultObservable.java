@@ -8,10 +8,9 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-class DefaultObservable<I, O> implements Observable<O> {
+class DefaultObservable<I, O> extends AbstractObservable<O> implements Observable<O> {
 
-    protected final Collection<Observable<I>> previous;
-
+    private final Collection<Observable<I>> previous;
     private final Function<Observer<O>, Observer<I>> observeAction;
     private final BiFunction<Collection<Observable<I>>, Observer<O>, Closeable> subscribeAction;
 
@@ -22,16 +21,6 @@ class DefaultObservable<I, O> implements Observable<O> {
         this.observeAction = observeAction;
         this.subscribeAction = subscribeAction;
         this.previous = previous;
-    }
-
-    @Override
-    public <R> Observable<R> observeAction(Function<Observer<R>, Observer<O>> action) {
-        return new DefaultObservable<>(action, null, Arrays.asList(this));
-    }
-
-    @Override
-    public ConnectableObservable<O> publish() {
-        return new DefaultConnectableObservable<>(Arrays.asList(this));
     }
 
     @Override
@@ -70,10 +59,5 @@ class DefaultObservable<I, O> implements Observable<O> {
         }
 
         return subscribeAction.apply(previous, observer);
-    }
-
-    @Override
-    public Observable<O> subscribeAction(BiFunction<Collection<Observable<O>>, Observer<O>, Closeable> action) {
-        return new DefaultObservable<>(null, action, Arrays.asList(this));
     }
 }

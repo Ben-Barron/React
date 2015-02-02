@@ -6,12 +6,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-class DefaultConnectableObservable<O> extends DefaultObservable<O, O> implements ConnectableObservable<O> {
+class DefaultConnectableObservable<O> extends AbstractObservable<O> implements ConnectableObservable<O> {
 
+    private final Collection<Observable<O>> previous;
     private final Collection<Observer<O>> next = new ConcurrentLinkedQueue<>();
 
     DefaultConnectableObservable(Collection<Observable<O>> previous) {
-        super(null, null, previous);
+        this.previous = previous;
     }
 
     @Override
