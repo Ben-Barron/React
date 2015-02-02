@@ -1,90 +1,60 @@
 package com.benbarron.react;
 
-import java.util.Collections;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collection;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
-class DefaultConnectableObservable<I, O> extends DefaultObservable<I, O> implements ConnectableObservable<O> {
+class DefaultConnectableObservable<O> extends DefaultObservable<O, O> implements ConnectableObservable<O> {
 
-    private final Set<Observer<O>> next = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final AtomicBoolean isConnected = new AtomicBoolean(false);
+    private final Collection<Observer<O>> next = new ConcurrentLinkedQueue<>();
 
-    @SafeVarargs
-    DefaultConnectableObservable(Observable<I>... previous) {
-        super(null, previous);
+    DefaultConnectableObservable(Collection<Observable<O>> previous) {
+        super(null, null, previous);
     }
 
     @Override
-    public AutoCloseable connect() {
-        if (isConnected.compareAndSet(false, true)) {
-            this.previous.forEach(i -> this.closables.add(i.subscribe(this)));
-        }
+    public Closeable connect() {
+        AtomicBoolean isConnected = new AtomicBoolean(true);
+        Observer<O> observer = new Observer<O>() {
+
+            private final AtomicInteger previousClosedCount = new AtomicInteger(0);
+            private final int previousCount = previous.size();
+
+            @Override
+            public void onComplete() {
+                if (previousClosedCount.incrementAndGet() == previousCount && isConnected.compareAndSet(true, false)) {
+                    next.forEach(Observer::onComplete);
+                }
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                if (isConnected.compareAndSet(true, false)) {
+                    next.forEach(i -> i.onError(throwable));
+                }
+            }
+
+            @Override
+            public void onNext(O item) {
+                if (isConnected.get()) {
+                    next.forEach(i -> i.onNext(item));
+                }
+            }
+        };
+        Closeable closable = Closeable.from(previous.stream().map(p -> p.subscribe(observer)).collect(Collectors.toList()));
 
         return () -> {
             if (isConnected.compareAndSet(true, false)) {
-                for (AutoCloseable closable : closables) {
-                    try {
-                        closable.close();
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-
-                closables.clear();
+                closable.close();
             }
         };
     }
 
     @Override
-    public void onComplete() {
-        if (completeCount.incrementAndGet() == previous.size()) {
-            runThenClose(() -> next.forEach(Observer::onComplete));
-        }
-    }
-
-    @Override
-    public void onError(Throwable throwable) {
-        runThenClose(() -> next.forEach(n -> n.onError(throwable)));
-    }
-
-    @Override
-    public void onNext(I item) {
-        if (!isConnected.get()) {
-            return;
-        }
-
-        try {
-            next.forEach(n -> n.onNext((O) item));
-        } catch (Exception e) {
-            next.forEach(n -> n.onError(e));
-        }
-    }
-
-    @Override
-    public ConnectableObservable<O> publish() {
-        return this;
-    }
-
-    @Override
-    public AutoCloseable subscribe(Observer<O> observer) {
+    public Closeable subscribe(Observer<O> observer) {
         next.add(observer);
         return () -> next.remove(observer);
-    }
-
-    private void runThenClose(Runnable runnable) {
-        if (isConnected.compareAndSet(true, false)) {
-            runnable.run();
-
-            for (AutoCloseable closable : closables) {
-                try {
-                    closable.close();
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            closables.clear();
-        }
     }
 }

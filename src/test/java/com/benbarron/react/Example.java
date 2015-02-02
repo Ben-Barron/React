@@ -1,33 +1,34 @@
 package com.benbarron.react;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 public class Example {
 
-    private AtomicBoolean isValueSet = new AtomicBoolean(false);
-    private Object value = null;
-
-    private void initializeValue(Object value) {
-        // as you can see, value can only ever be set once.
-        if (isValueSet.compareAndSet(false, true)) {
-            UnsafeUtil.setValue(this, "value", value);
-        }
-    }
-
-    public Object getValue() {
-        return value;
-    }
-
-
     public static void main(String[] args) {
-        Example e = new Example();
+        Observable<Integer> observable = Observables.generate(observer -> {
+            System.out.println("Subscribe");
 
-        Object o = new Object();
+            observer.onNext(1);
+            observer.onNext(2);
+            observer.onNext(3);
+            observer.onNext(4);
 
-        e.initializeValue(o);
+            try {
+                Thread.sleep(1000);
+            } catch (Exception e) {
 
-        if (o.equals(e.getValue())) {
-            System.out.println("yay");
-        }
+            }
+
+            observer.onNext(5);
+            observer.onComplete();
+        });
+
+        ConnectableObservable<Integer> hot = observable.publish();
+
+        //hot.subscribe(System.out::println,() -> System.out.println("complete1"), t -> System.out.println(t.getMessage()));
+        //hot.subscribe(System.out::println,() -> System.out.println("complete2"), t -> System.out.println(t.getMessage()));
+        //hot.subscribe(System.out::println,() -> System.out.println("complete3"), t -> System.out.println(t.getMessage()));
+
+        hot.connect();
+
+
     }
 }
