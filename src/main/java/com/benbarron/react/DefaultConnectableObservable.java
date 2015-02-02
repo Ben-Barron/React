@@ -11,7 +11,7 @@ class DefaultConnectableObservable<I, O> extends DefaultObservable<I, O> impleme
     private final AtomicBoolean isConnected = new AtomicBoolean(false);
 
     @SafeVarargs
-    DefaultConnectableObservable(Observable<I> ... previous) {
+    DefaultConnectableObservable(Observable<I>... previous) {
         super(null, previous);
     }
 
@@ -49,7 +49,6 @@ class DefaultConnectableObservable<I, O> extends DefaultObservable<I, O> impleme
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void onNext(I item) {
         if (!isConnected.get()) {
             return;

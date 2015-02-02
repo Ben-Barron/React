@@ -1,11 +1,14 @@
 package com.benbarron.react;
 
+import javafx.collections.ObservableArray;
+
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.*;
@@ -14,11 +17,29 @@ public interface Observable<T> {
 
     <R> Observable<R> action(BiConsumer<T, Observer<R>> action);
 
+    default <R> Observable<R> action(Function<Observable<T>, Observable<R>> transformer) {
+        return transformer.apply(this);
+    }
+
+    default Observable<T> actionOnSubscribe(Consumer<Runnable> subscribeCall) {
+        return this;
+    }
+
     default Observable<T> distinct() {
         Set<T> items = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         return action((T item, Observer<T> observer) -> {
             if (items.add(item)) {
+                observer.onNext(item);
+            }
+        });
+    }
+
+    default Observable<T> distinctUntilChanged() {
+        AtomicReference<T> last = new AtomicReference<>(null);
+
+        return action((T item, Observer<T> observer) -> {
+            if (!last.getAndSet(item).equals(item)) {
                 observer.onNext(item);
             }
         });
@@ -48,21 +69,22 @@ public interface Observable<T> {
         });
     }
 
+    default Observable<T> ignoreElements() {
+        return action((T item, Observer<T> observer) -> { });
+    }
+
     default Optional<T> last() {
         return Optional.ofNullable(lastOrDefault());
     }
 
     default T lastOrDefault() {
         AtomicReference<T> last = new AtomicReference<>(null);
-        ArrayBlockingQueue<T> queue = new ArrayBlockingQueue<>(1);
+        Semaphore mutex = new Semaphore(1);
+        mutex.acquireUninterruptibly();
 
-        subscribe(last::set,() -> queue.add(last.get()), t -> { throw new RuntimeException(t); });
+        subscribe(last::set, mutex::release, t -> { throw new RuntimeException(t); });
 
-        try {
-            return queue.take();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+        return last.get();
     }
 
     default Observable<T> limit(long limit) {
@@ -127,7 +149,7 @@ public interface Observable<T> {
     default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete) {
         return subscribe(onNext, onComplete, t -> {});
     }
-    
+
     default AutoCloseable subscribe(Consumer<T> onNext, Runnable onComplete, Consumer<Throwable> onError) {
         return subscribe(new Observer<T>() {
 
@@ -147,7 +169,29 @@ public interface Observable<T> {
             }
         });
     }
+    
     AutoCloseable subscribe(Observer<T> observer);
 
-    Observable<T> subscribeOn(ExecutorService executorService);
+
+    default Observable<T> take(long number) {
+        AtomicLong count = new AtomicLong(0);
+
+        return action((T item, Observer<T> observer) -> {
+            long c = count.incrementAndGet();
+
+            if (c < number) {
+                observer.onNext(item);
+            } else if (c == number) {
+                observer.onComplete();
+            }
+        });
+    }
+
+    static <T> Observable<T> generate(Consumer<Observer<T>> observer) {
+        return new DefaultObservable<>((T item, Observer<T> o) -> observer.accept(o));
+    }
+
+    static <T> Observable<T> generate(Function<Consumer<Observer<T>>, AutoCloseable> observer) {
+        return null;
+    }
 }

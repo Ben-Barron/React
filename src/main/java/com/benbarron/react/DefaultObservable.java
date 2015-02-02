@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 
 class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
 
@@ -18,11 +19,11 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
     private final AtomicBoolean isSubscribed = new AtomicBoolean(false);
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-    private volatile Observer<O> next;
-    private volatile ExecutorService subscribeOn;
+    private ExecutorService subscribeOn;
+    private Observer<O> next;
 
     @SafeVarargs
-    DefaultObservable(BiConsumer<I, Observer<O>> action, Observable<I> ... previous) {
+    DefaultObservable(BiConsumer<I, Observer<O>> action, Observable<I>... previous) {
         this.action = action;
         Collections.addAll(this.previous, previous);
     }
@@ -45,7 +46,6 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
     }
 
     @Override
-    @SuppressWarnings("unchecked")
     public void onNext(I item) {
         if (isClosed.get()) {
             return;
@@ -83,7 +83,7 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
             observable.previous.addAll(previous);
         }
 
-        observable.next = observer;
+        UnsafeUtil.setValue(observable, "next", observer);
 
         if (subscribeOn != null) {
             subscribeOn.submit(() -> internalSubscribe(observable));
@@ -94,11 +94,11 @@ class DefaultObservable<I, O> implements Observer<I>, Observable<O> {
         return () -> runThenClose(null);
     }
 
-    @Override
     public Observable<O> subscribeOn(ExecutorService executorService) {
-        subscribeOn = executorService;
+        UnsafeUtil.setValue(this, "subscribeOn", executorService);
         return this;
     }
+
 
     private void internalSubscribe(DefaultObservable<I, O> observable) {
         if (!observable.previous.isEmpty()) {
