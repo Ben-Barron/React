@@ -1,9 +1,10 @@
 package com.benbarron.react;
 
+import com.benbarron.react.operator.Any;
 import com.benbarron.react.operator.Distinct;
 import com.benbarron.react.operator.DistinctUntilChanged;
 
-import java.util.*;
+import java.util.Arrays;
 import java.util.function.*;
 
 /**
@@ -11,6 +12,10 @@ import java.util.function.*;
  * @param <T> The object that provides notification information.
  */
 public interface Observable<T> {
+
+    default Observable<Boolean> any(Predicate<T> predicate) {
+        return observeAction(new Any<>(predicate));
+    }
 
     default Observable<T> distinct() {
         return observeAction(new Distinct<>());
@@ -42,7 +47,7 @@ public interface Observable<T> {
     }
 
     default <R> Observable<R> observeAction(Function<Observer<R>, Observer<T>> action) {
-        return new DefaultObservable<>(Arrays.asList(this), null, action);
+        return new DefaultObservable<>(ImmutableList.from(this), null, action);
     }
 
     default ConnectableObservable<T> publish() {
@@ -82,8 +87,8 @@ public interface Observable<T> {
 
     Closeable subscribe(Observer<T> observer);
 
-    default Observable<T> subscribeAction(BiFunction<Collection<Observable<T>>, Observer<T>, Closeable> action) {
-        return new DefaultObservable<>(Arrays.asList(this), action, null);
+    default Observable<T> subscribeAction(BiFunction<ImmutableList<Observable<T>>, Observer<T>, Closeable> action) {
+        return new DefaultObservable<>(ImmutableList.from(this), action, null);
     }
 
 

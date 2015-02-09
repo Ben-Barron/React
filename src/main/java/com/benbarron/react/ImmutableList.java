@@ -60,7 +60,12 @@ public class ImmutableList<T> implements Iterable<T> {
     }
 
 
-    public static <T> ImmutableList<T> from(T[] items) {
+    public static <T> ImmutableList<T> empty() {
+        return from();
+    }
+
+    @SafeVarargs
+    public static <T> ImmutableList<T> from(T... items) {
         return new ImmutableList<>(items);
     }
 }

@@ -1,22 +1,20 @@
 package com.benbarron.react;
 
-import java.util.Collection;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 class DefaultObservable<I, O> implements Observable<O> {
 
-    private final Collection<Observable<I>> previousObservables;
+    private final ImmutableList<Observable<I>> previousObservables;
     private final Function<Observer<O>, Observer<I>> observeAction;
-    private final BiFunction<Collection<Observable<I>>, Observer<O>, Closeable> subscribeAction;
+    private final BiFunction<ImmutableList<Observable<I>>, Observer<O>, Closeable> subscribeAction;
 
-    DefaultObservable(Collection<Observable<I>> previousObservables,
-                      BiFunction<Collection<Observable<I>>, Observer<O>, Closeable> subscribeAction,
+    DefaultObservable(ImmutableList<Observable<I>> previousObservables,
+                      BiFunction<ImmutableList<Observable<I>>, Observer<O>, Closeable> subscribeAction,
                       Function<Observer<O>, Observer<I>> observeAction) {
 
         this.observeAction = observeAction;
@@ -27,6 +25,7 @@ class DefaultObservable<I, O> implements Observable<O> {
     @Override
     public Closeable subscribe(Observer<O> observer) {
         if (observeAction != null) {
+            AtomicReference<Closeable> closeableRef = new AtomicReference<>(Closeable.empty()); // TODO: race condition here?
             Observer<I> observerWrapper = new Observer<I>() {
 
                 private final Observer<I> nextObserver = observeAction.apply(observer);
@@ -38,6 +37,7 @@ class DefaultObservable<I, O> implements Observable<O> {
                 public void onComplete() {
                     if (previousClosedCount.incrementAndGet() == previousCount && isClosed.compareAndSet(false, true)) {
                         nextObserver.onComplete();
+                        closeableRef.get().close();
                     }
                 }
 
@@ -45,6 +45,7 @@ class DefaultObservable<I, O> implements Observable<O> {
                 public void onError(Throwable throwable) {
                     if (isClosed.compareAndSet(false, true)) {
                         nextObserver.onError(throwable);
+                        closeableRef.get().close();
                     }
                 }
 
@@ -56,7 +57,13 @@ class DefaultObservable<I, O> implements Observable<O> {
                 }
             };
 
-            return Closeable.from(previousObservables.stream().map(p -> p.subscribe(observerWrapper)).collect(Collectors.toCollection(LinkedList::new)));
+            LinkedList<Closeable> closeables = new LinkedList<>();
+            previousObservables.forEach(o -> closeables.add(o.subscribe(observerWrapper)));
+
+            Closeable closeable = Closeable.from(closeables);
+            closeableRef.set(closeable);
+
+            return closeable;
         }
 
         return subscribeAction.apply(previousObservables, observer);

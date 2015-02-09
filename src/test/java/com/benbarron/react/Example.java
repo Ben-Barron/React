@@ -15,5 +15,12 @@ public class Example {
         });
 
         os.publish().connect();
+
+        Integer[] items = new Integer[] { 1, 2, 3, 4, 5, 6, 7 };
+        ImmutableList<Integer> list = ImmutableList.from(items);
+
+        for (Integer i : list) {
+            System.out.println(i);
+        }
     }
 }

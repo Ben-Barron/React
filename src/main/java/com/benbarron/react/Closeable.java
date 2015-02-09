@@ -1,6 +1,7 @@
 package com.benbarron.react;
 
 import java.util.Collection;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Provides a mechanism for releasing resources.
@@ -33,6 +34,12 @@ public interface Closeable {
      * @return A closeable that closes the underlying closeables.
      */
     static Closeable from(Collection<Closeable> closeables) {
-        return () -> closeables.forEach(Closeable::close);
+        AtomicBoolean isClosed = new AtomicBoolean(false);
+
+        return () -> {
+            if (isClosed.compareAndSet(false, true)) {
+                closeables.forEach(Closeable::close);
+            }
+        };
     }
 }
