@@ -1,25 +1,27 @@
 package com.benbarron.react;
 
 import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-class DefaultObservable<I, O> extends AbstractObservable<O> implements Observable<O> {
+class DefaultObservable<I, O> implements Observable<O> {
 
-    private final Collection<Observable<I>> previous;
+    private final Collection<Observable<I>> previousObservables;
     private final Function<Observer<O>, Observer<I>> observeAction;
     private final BiFunction<Collection<Observable<I>>, Observer<O>, Closeable> subscribeAction;
 
-    DefaultObservable(Function<Observer<O>, Observer<I>> observeAction,
+    DefaultObservable(Collection<Observable<I>> previousObservables,
                       BiFunction<Collection<Observable<I>>, Observer<O>, Closeable> subscribeAction,
-                      Collection<Observable<I>> previous) {
+                      Function<Observer<O>, Observer<I>> observeAction) {
 
         this.observeAction = observeAction;
         this.subscribeAction = subscribeAction;
-        this.previous = previous;
+        this.previousObservables = previousObservables;
     }
 
     @Override
@@ -27,36 +29,36 @@ class DefaultObservable<I, O> extends AbstractObservable<O> implements Observabl
         if (observeAction != null) {
             Observer<I> observerWrapper = new Observer<I>() {
 
-                private final Observer<I> next = observeAction.apply(observer);
+                private final Observer<I> nextObserver = observeAction.apply(observer);
                 private final AtomicBoolean isClosed = new AtomicBoolean(false);
                 private final AtomicInteger previousClosedCount = new AtomicInteger(0);
-                private final int previousCount = previous.size();
+                private final int previousCount = previousObservables.size();
 
                 @Override
                 public void onComplete() {
                     if (previousClosedCount.incrementAndGet() == previousCount && isClosed.compareAndSet(false, true)) {
-                        next.onComplete();
+                        nextObserver.onComplete();
                     }
                 }
 
                 @Override
                 public void onError(Throwable throwable) {
                     if (isClosed.compareAndSet(false, true)) {
-                        next.onError(throwable);
+                        nextObserver.onError(throwable);
                     }
                 }
 
                 @Override
                 public void onNext(I item) {
                     if (!isClosed.get()) {
-                        next.onNext(item);
+                        nextObserver.onNext(item);
                     }
                 }
             };
 
-            return Closeable.from(previous.stream().map(p -> p.subscribe(observerWrapper)).collect(Collectors.toList()));
+            return Closeable.from(previousObservables.stream().map(p -> p.subscribe(observerWrapper)).collect(Collectors.toCollection(LinkedList::new)));
         }
 
-        return subscribeAction.apply(previous, observer);
+        return subscribeAction.apply(previousObservables, observer);
     }
 }

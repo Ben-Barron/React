@@ -1,12 +1,13 @@
 package com.benbarron.react;
 
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-class DefaultConnectableObservable<O> extends AbstractObservable<O> implements ConnectableObservable<O> {
+class DefaultConnectableObservable<O> implements ConnectableObservable<O> {
 
     private final Collection<Observable<O>> previous;
     private final Collection<Observer<O>> next = new ConcurrentLinkedQueue<>();
@@ -44,7 +45,7 @@ class DefaultConnectableObservable<O> extends AbstractObservable<O> implements C
                 }
             }
         };
-        Closeable closable = Closeable.from(previous.stream().map(p -> p.subscribe(observer)).collect(Collectors.toList()));
+        Closeable closable = Closeable.from(previous.stream().map(p -> p.subscribe(observer)).collect(Collectors.toCollection(LinkedList::new)));
 
         return () -> {
             if (isConnected.compareAndSet(true, false)) {

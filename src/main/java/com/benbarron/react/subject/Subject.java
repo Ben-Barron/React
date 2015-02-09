@@ -1,26 +1,22 @@
-package com.benbarron.react;
+package com.benbarron.react.subject;
+
+import com.benbarron.react.Closeable;
+import com.benbarron.react.Observable;
+import com.benbarron.react.Observer;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class BehaviorSubject<T> extends AbstractObservable<T> implements Closeable, Observable<T>, Observer<T> {
+public class Subject<T> implements Closeable, Observable<T>, Observer<T> {
 
-    private final AtomicBoolean isClosed = new AtomicBoolean(true);
     private final Collection<Observer<T>> next = new ConcurrentLinkedQueue<>();
-
-    private volatile T initialValue;
-
-    public BehaviorSubject(T initialValue) {
-        this.initialValue = initialValue;
-    }
+    private final AtomicBoolean isClosed = new AtomicBoolean(true);
 
     @Override
     public void close() {
-        if (isClosed.compareAndSet(false, true)) {
-            next.clear();
-            initialValue = null;
-        }
+        onComplete();
+        next.clear();
     }
 
     @Override
@@ -47,8 +43,6 @@ public class BehaviorSubject<T> extends AbstractObservable<T> implements Closeab
     @Override
     public Closeable subscribe(Observer<T> observer) {
         next.add(observer);
-        observer.onNext(initialValue);
-
         return () -> next.remove(observer);
     }
 }
