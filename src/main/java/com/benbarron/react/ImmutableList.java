@@ -1,5 +1,6 @@
 package com.benbarron.react;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 public class ImmutableList<T> implements Iterable<T> {
@@ -11,7 +12,10 @@ public class ImmutableList<T> implements Iterable<T> {
     }
 
     public ImmutableList<T> add(T item) {
-        return null;
+        T[] newItems = Arrays.copyOf(items, items.length + 1);
+        newItems[items.length] = item;
+
+        return new ImmutableList<>(newItems);
     }
 
     @Override
@@ -33,7 +37,17 @@ public class ImmutableList<T> implements Iterable<T> {
     }
 
     public ImmutableList<T> remove(T item) {
-        return null;
+        T[] newItems = items;
+
+        for (int i = 0; i < items.length; i++) {
+            if (items[i].equals(item)) {
+                newItems = Arrays.copyOf(items, items.length - 1);
+                System.arraycopy(items, i + 1, newItems, i, newItems.length - i);
+                break;
+            }
+        }
+
+        return new ImmutableList<>(newItems);
     }
 
     public int size() {
