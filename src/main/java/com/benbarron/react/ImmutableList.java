@@ -2,6 +2,7 @@ package com.benbarron.react;
 
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 public class ImmutableList<T> implements Iterable<T> {
 
@@ -31,7 +32,11 @@ public class ImmutableList<T> implements Iterable<T> {
 
             @Override
             public T next() {
-                return items[position++];
+                if (hasNext()) {
+                    return items[position++];
+                }
+
+                throw new NoSuchElementException();
             }
         };
     }
