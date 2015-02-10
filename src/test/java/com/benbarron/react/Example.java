@@ -1,5 +1,6 @@
 package com.benbarron.react;
 
+import com.benbarron.react.lang.ImmutableList;
 import org.junit.Test;
 
 public class Example {

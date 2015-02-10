@@ -1,5 +1,7 @@
 package com.benbarron.react;
 
+import com.benbarron.react.lang.Closeable;
+
 /**
  * Represents an observable that can be connected and disconnected.
  * @param <T> The object that provides notification information.

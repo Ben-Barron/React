@@ -1,5 +1,7 @@
 package com.benbarron.react;
 
+import com.benbarron.react.lang.Closeable;
+import com.benbarron.react.lang.ImmutableList;
 import com.benbarron.react.operator.Any;
 import com.benbarron.react.operator.Distinct;
 import com.benbarron.react.operator.DistinctUntilChanged;
@@ -87,7 +89,7 @@ public interface Observable<T> {
 
     Closeable subscribe(Observer<T> observer);
 
-    default Observable<T> subscribeAction(BiFunction<ImmutableList<Observable<T>>, Observer<T>, Closeable> action) {
+    default Observable<T> subscribeAction(BiFunction<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
         return new DefaultObservable<>(ImmutableList.from(this), action, null);
     }
 

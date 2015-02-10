@@ -1,5 +1,7 @@
 package com.benbarron.react;
 
+import com.benbarron.react.lang.Closeable;
+
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.concurrent.ConcurrentLinkedQueue;

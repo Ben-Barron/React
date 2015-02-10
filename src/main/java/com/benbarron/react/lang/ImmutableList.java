@@ -1,8 +1,10 @@
-package com.benbarron.react;
+package com.benbarron.react.lang;
 
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 public class ImmutableList<T> implements Iterable<T> {
 
@@ -16,7 +18,7 @@ public class ImmutableList<T> implements Iterable<T> {
         T[] newItems = Arrays.copyOf(items, items.length + 1);
         newItems[items.length] = item;
 
-        return new ImmutableList<>(newItems);
+        return from(newItems);
     }
 
     @Override
@@ -52,11 +54,15 @@ public class ImmutableList<T> implements Iterable<T> {
             }
         }
 
-        return new ImmutableList<>(newItems);
+        return from(newItems);
     }
 
     public int size() {
         return items.length;
+    }
+
+    public Stream<T> stream() {
+        return StreamSupport.stream(spliterator(), false);
     }
 
 

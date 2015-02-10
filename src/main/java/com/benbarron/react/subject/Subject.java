@@ -1,8 +1,8 @@
 package com.benbarron.react.subject;
 
-import com.benbarron.react.Closeable;
 import com.benbarron.react.Observable;
 import com.benbarron.react.Observer;
+import com.benbarron.react.lang.Closeable;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentLinkedQueue;

@@ -1,6 +1,5 @@
-package com.benbarron.react;
+package com.benbarron.react.lang;
 
-import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -33,9 +32,8 @@ public interface Closeable {
      * @param closeables Collection of underlying closeables.
      * @return A closeable that closes the underlying closeables.
      */
-    static Closeable from(Collection<Closeable> closeables) {
+    static Closeable from(Iterable<Closeable> closeables) {
         AtomicBoolean isClosed = new AtomicBoolean(false);
-
         return () -> {
             if (isClosed.compareAndSet(false, true)) {
                 closeables.forEach(Closeable::close);

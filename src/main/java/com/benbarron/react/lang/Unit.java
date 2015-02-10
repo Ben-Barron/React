@@ -1,4 +1,4 @@
-package com.benbarron.react;
+package com.benbarron.react.lang;
 
 /**
  * Represents a single unit value.
