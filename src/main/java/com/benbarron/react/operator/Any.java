@@ -19,6 +19,7 @@ public class Any<T> implements Function<Observer<Boolean>, Observer<T>> {
             @Override
             public void onComplete() {
                 observer.onNext(false);
+                observer.onComplete();
             }
 
             @Override
