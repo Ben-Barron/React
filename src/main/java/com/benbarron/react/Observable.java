@@ -15,6 +15,11 @@ import java.util.function.*;
  */
 public interface Observable<T> {
 
+    default Observable<T> asObservable() {
+        Observable<T> self = this;
+        return self::subscribe;
+    }
+
     default Observable<Boolean> any(Predicate<T> predicate) {
         return observeAction(new Any<>(predicate));
     }

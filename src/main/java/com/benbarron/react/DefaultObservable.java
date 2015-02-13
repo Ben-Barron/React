@@ -30,11 +30,11 @@ class DefaultObservable<I, O> implements Observable<O> {
             return subscribeAction.apply(previousObservables, observer);
         }
 
+        AtomicBoolean isClosed = new AtomicBoolean(false);
         AtomicReference<Closeable> closeableRef = new AtomicReference<>(Closeable.empty());
         Observer<I> observerWrapper = new Observer<I>() {
 
             private final Observer<I> nextObserver = observeAction.apply(observer);
-            private final AtomicBoolean isClosed = new AtomicBoolean(false);
             private final AtomicInteger previousClosedCount = new AtomicInteger(0);
             private final int previousCount = previousObservables.size();
 
@@ -66,14 +66,17 @@ class DefaultObservable<I, O> implements Observable<O> {
             }
         };
 
-        Closeable[] closeablesArray = previousObservables.stream()
-                .map(o -> o.subscribe(observerWrapper))
-                .toArray(Closeable[]::new);
-        ImmutableList<Closeable> closeables = ImmutableList.from(closeablesArray);
-        Closeable wrappedClosable = Closeable.from(closeables);
+        ImmutableList<Closeable> closeables = ImmutableList.empty();
 
-        closeableRef.set(wrappedClosable);
+        for (Observable<I> observable : previousObservables) {
+            if (isClosed.get()) {
+                break;
+            }
 
-        return wrappedClosable;
+            closeables = closeables.add(observable.subscribe(observerWrapper));
+            closeableRef.set(Closeable.from(closeables));
+        }
+
+        return closeableRef.get();
     }
 }

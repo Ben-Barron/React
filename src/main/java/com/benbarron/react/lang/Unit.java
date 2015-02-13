@@ -5,5 +5,5 @@ package com.benbarron.react.lang;
  */
 public enum Unit {
 
-    Default
+    Default;
 }
