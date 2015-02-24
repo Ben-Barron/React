@@ -2,6 +2,7 @@ package com.benbarron.react;
 
 import com.benbarron.react.lang.Closeable;
 import com.benbarron.react.lang.ImmutableList;
+import com.benbarron.react.lang.ResubscribeException;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,11 +37,10 @@ class DefaultObservable<I, O> implements Observable<O> {
 
             private final Observer<I> nextObserver = observeAction.apply(observer);
             private final AtomicInteger previousClosedCount = new AtomicInteger(0);
-            private final int previousCount = previousObservables.size();
 
             @Override
             public void onComplete() {
-                if (previousClosedCount.incrementAndGet() == previousCount && isClosed.compareAndSet(false, true)) {
+                if (previousClosedCount.incrementAndGet() == previousObservables.size() && isClosed.compareAndSet(false, true)) {
                     nextObserver.onComplete();
                     closeableRef.getAndSet(Closeable.empty()).close();
                 }
@@ -59,6 +59,8 @@ class DefaultObservable<I, O> implements Observable<O> {
                 if (!isClosed.get()) {
                     try {
                         nextObserver.onNext(item);
+                    } catch (ResubscribeException e) {
+                        subscribe(observer);
                     } catch (Throwable t) {
                         onError(t);
                     }
@@ -70,6 +72,7 @@ class DefaultObservable<I, O> implements Observable<O> {
 
         for (Observable<I> observable : previousObservables) {
             if (isClosed.get()) {
+                closeableRef.getAndSet(Closeable.empty()).close(); // TODO: this right?
                 break;
             }
 

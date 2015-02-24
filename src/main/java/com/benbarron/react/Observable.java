@@ -21,40 +21,19 @@ public interface Observable<T> {
     }
 
     default Observable<Boolean> any(Predicate<T> predicate) {
-        return observeAction(new Any<>(predicate));
+        return x(new Any<>(predicate));
     }
 
     default Observable<T> distinct() {
-        return observeAction(new Distinct<>());
+        return x(new Distinct<>());
     }
 
     default Observable<T> distinctUntilChanged() {
-        return observeAction(new DistinctUntilChanged<>());
+        return x(new DistinctUntilChanged<>());
     }
 
-    default <R> Observable<R> observeAction(BiConsumer<T, Observer<R>> action) {
-        return observeAction(o -> {
-            return new Observer<T>() {
-                @Override
-                public void onComplete() {
-                    o.onComplete();
-                }
-
-                @Override
-                public void onError(Throwable throwable) {
-                    o.onError(throwable);
-                }
-
-                @Override
-                public void onNext(T item) {
-                    action.accept(item, o);
-                }
-            };
-        });
-    }
-
-    default <R> Observable<R> observeAction(Function<Observer<R>, Observer<T>> action) {
-        return new DefaultObservable<>(ImmutableList.from(this), null, action);
+    default Observable<T> doSubscribe(BiFunction<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
+        return new DefaultObservable<>(ImmutableList.from(this), action, null);
     }
 
     default ConnectableObservable<T> publish() {
@@ -94,8 +73,29 @@ public interface Observable<T> {
 
     Closeable subscribe(Observer<T> observer);
 
-    default Observable<T> subscribeAction(BiFunction<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
-        return new DefaultObservable<>(ImmutableList.from(this), action, null);
+    default <R> Observable<R> x(BiConsumer<T, Observer<R>> action) {
+        return x(o -> {
+            return new Observer<T>() {
+                @Override
+                public void onComplete() {
+                    o.onComplete();
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    o.onError(throwable);
+                }
+
+                @Override
+                public void onNext(T item) {
+                    action.accept(item, o);
+                }
+            };
+        });
+    }
+
+    default <R> Observable<R> x(Function<Observer<R>, Observer<T>> action) {
+        return new DefaultObservable<>(ImmutableList.from(this), null, action);
     }
 
 
