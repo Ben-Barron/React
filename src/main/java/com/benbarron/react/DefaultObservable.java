@@ -61,8 +61,8 @@ class DefaultObservable<I, O> implements Observable<O> {
                         nextObserver.onNext(item);
                     } catch (ResubscribeException e) {
                         subscribe(observer);
-                    } catch (Throwable t) {
-                        onError(t);
+                    } catch (Exception e) {
+                        onError(e);
                     }
                 }
             }
