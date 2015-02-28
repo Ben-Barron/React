@@ -1,13 +1,14 @@
 package com.benbarron.react;
 
+import com.benbarron.react.function.*;
+import com.benbarron.react.function.Action1;
+import com.benbarron.react.function.Action2;
 import com.benbarron.react.lang.Closeable;
 import com.benbarron.react.lang.ImmutableList;
+import com.benbarron.react.lang.Try;
 import com.benbarron.react.operator.Any;
 import com.benbarron.react.operator.Distinct;
 import com.benbarron.react.operator.DistinctUntilChanged;
-
-import java.util.Arrays;
-import java.util.function.*;
 
 /**
  * Represents a stream of push-based notifications.
@@ -32,48 +33,48 @@ public interface Observable<T> {
         return x(new DistinctUntilChanged<>());
     }
 
-    default Observable<T> doSubscribe(BiFunction<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
+    default Observable<T> doSubscribe(Func2<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
         return new DefaultObservable<>(ImmutableList.from(this), action, null);
     }
 
-    default ConnectableObservable<T> publish() {
+    /*default ConnectableObservable<T> publish() {
         return new DefaultConnectableObservable<>(Arrays.asList(this));
-    }
+    }*/
 
     default Closeable subscribe() {
         return subscribe(i -> {});
     }
 
-    default Closeable subscribe(Consumer<T> onNext) {
+    default Closeable subscribe(Action1<T> onNext) {
         return subscribe(onNext, () -> {});
     }
 
-    default Closeable subscribe(Consumer<T> onNext, Runnable onComplete) {
+    default Closeable subscribe(Action1<T> onNext, Action onComplete) {
         return subscribe(onNext, onComplete, t -> { throw new RuntimeException(t); });
     }
 
-    default Closeable subscribe(Consumer<T> onNext, Runnable onComplete, Consumer<Throwable> onError) {
+    default Closeable subscribe(Action1<T> onNext, Action onComplete, Action1<Throwable> onError) {
         return subscribe(new Observer<T>() {
             @Override
             public void onComplete() {
-                onComplete.run();
+                Try.ignore(onComplete::run);
             }
 
             @Override
             public void onError(Throwable throwable) {
-                onError.accept(throwable);
+                Try.ignore(() -> onError.run(throwable));
             }
 
             @Override
             public void onNext(T item) {
-                onNext.accept(item);
+                Try.ignore(() -> onNext.run(item));
             }
         });
     }
 
     Closeable subscribe(Observer<T> observer);
 
-    default <R> Observable<R> x(BiConsumer<T, Observer<R>> action) {
+    default <R> Observable<R> x(Action2<T, Observer<R>> action) {
         return x(o -> {
             return new Observer<T>() {
                 @Override
@@ -88,22 +89,22 @@ public interface Observable<T> {
 
                 @Override
                 public void onNext(T item) {
-                    action.accept(item, o);
+                    Try.run(() -> action.run(item, o));
                 }
             };
         });
     }
 
-    default <R> Observable<R> x(Function<Observer<R>, Observer<T>> action) {
+    default <R> Observable<R> x(Func1<Observer<R>, Observer<T>> action) {
         return new DefaultObservable<>(ImmutableList.from(this), null, action);
     }
 
 
-    static <T> Observable<T> generate(Consumer<Observer<T>> observer) {
-        return generate(o -> { observer.accept(o); return Closeable.empty(); });
+    static <T> Observable<T> generate(Action1<Observer<T>> observer) {
+        return generate(o -> { observer.run(o); return Closeable.empty(); });
     }
 
-    static <T> Observable<T> generate(Function<Observer<T>, Closeable> observer) {
-        return new DefaultObservable<>(null, (co, o) -> observer.apply(o), null);
+    static <T> Observable<T> generate(Func1<Observer<T>, Closeable> observer) {
+        return new DefaultObservable<>(null, (co, o) -> observer.run(o), null);
     }
 }

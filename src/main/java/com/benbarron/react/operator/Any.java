@@ -1,11 +1,11 @@
 package com.benbarron.react.operator;
 
 import com.benbarron.react.Observer;
+import com.benbarron.react.function.Func1;
+import com.benbarron.react.function.Predicate;
+import com.benbarron.react.lang.Try;
 
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-public class Any<T> implements Function<Observer<Boolean>, Observer<T>> {
+public class Any<T> implements Func1<Observer<Boolean>, Observer<T>> {
 
     private final Predicate<T> predicate;
 
@@ -14,7 +14,7 @@ public class Any<T> implements Function<Observer<Boolean>, Observer<T>> {
     }
 
     @Override
-    public Observer<T> apply(Observer<Boolean> observer) {
+    public Observer<T> run(Observer<Boolean> observer) {
         return new Observer<T>() {
             @Override
             public void onComplete() {
@@ -29,7 +29,7 @@ public class Any<T> implements Function<Observer<Boolean>, Observer<T>> {
 
             @Override
             public void onNext(T item) {
-                if (predicate.test(item)) {
+                if (Try.get(() -> predicate.test(item))) {
                     observer.onNext(true);
                     observer.onComplete();
                 }

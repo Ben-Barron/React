@@ -7,15 +7,18 @@ public class Example {
 
     @Test
     public void test() {
-        Observable<Number> os = Observable.generate(o -> {
-            o.onNext(0);
-            o.onNext(0.0f);
-            o.onNext(0.0d);
+        Observable<String> os = Observable.generate(
+                (Observer<String> o) -> {
+                    o.onNext("hey");
+                    o.onNext("ho");
+                    o.onNext("hey");
 
-            System.out.println("done");
-        });
+                    System.out.println("done");
+                })
+                .asObservable();
 
-        os.publish().connect();
+
+        //os.publish().connect();
 
         Integer[] items = new Integer[] { 1, 2, 3, 4, 5, 6, 7 };
         ImmutableList<Integer> list = ImmutableList.from(items);

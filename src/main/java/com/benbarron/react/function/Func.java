@@ -1,7 +1,7 @@
 package com.benbarron.react.function;
 
 @FunctionalInterface
-public interface Function<T> {
+public interface Func<T> {
 
     T run() throws Exception;
 }

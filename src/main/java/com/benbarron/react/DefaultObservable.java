@@ -1,47 +1,45 @@
 package com.benbarron.react;
 
-import com.benbarron.react.lang.Closeable;
-import com.benbarron.react.lang.ImmutableList;
-import com.benbarron.react.lang.ResubscribeException;
+import com.benbarron.react.function.Func1;
+import com.benbarron.react.function.Func2;
+import com.benbarron.react.lang.*;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 class DefaultObservable<I, O> implements Observable<O> {
 
-    private final ImmutableList<Observable<I>> previousObservables;
-    private final BiFunction<Iterable<Observable<I>>, Observer<O>, Closeable> subscribeAction;
-    private final Function<Observer<O>, Observer<I>> observeAction;
+    private final ImmutableList<Observable<I>> previous;
+    private final Func2<Iterable<Observable<I>>, Observer<O>, Closeable> onSubscribe;
+    private final Func1<Observer<O>, Observer<I>> onObserve;
 
-    DefaultObservable(ImmutableList<Observable<I>> previousObservables,
-                      BiFunction<Iterable<Observable<I>>, Observer<O>, Closeable> subscribeAction,
-                      Function<Observer<O>, Observer<I>> observeAction) {
+    DefaultObservable(ImmutableList<Observable<I>> previous,
+                      Func2<Iterable<Observable<I>>, Observer<O>, Closeable> onSubscribe,
+                      Func1<Observer<O>, Observer<I>> onObserve) {
 
-        this.previousObservables = previousObservables;
-        this.subscribeAction = subscribeAction;
-        this.observeAction = observeAction;
+        this.previous = previous;
+        this.onSubscribe = onSubscribe;
+        this.onObserve = onObserve;
     }
 
     @Override
     public Closeable subscribe(Observer<O> observer) {
-        if (observeAction == null) {
-            return subscribeAction.apply(previousObservables, observer);
+        if (onObserve == null) {
+            return Try.get(() -> onSubscribe.run(previous, observer));
         }
 
         AtomicBoolean isClosed = new AtomicBoolean(false);
         AtomicReference<Closeable> closeableRef = new AtomicReference<>(Closeable.empty());
         Observer<I> observerWrapper = new Observer<I>() {
 
-            private final Observer<I> nextObserver = observeAction.apply(observer);
             private final AtomicInteger previousClosedCount = new AtomicInteger(0);
+            private final Observer<I> nextObserver = Try.get(() -> onObserve.run(observer));
 
             @Override
             public void onComplete() {
-                if (previousClosedCount.incrementAndGet() == previousObservables.size() && isClosed.compareAndSet(false, true)) {
-                    nextObserver.onComplete();
+                if (previousClosedCount.incrementAndGet() == previous.size() && isClosed.compareAndSet(false, true)) {
+                    Try.run(nextObserver::onComplete);
                     closeableRef.getAndSet(Closeable.empty()).close();
                 }
             }
@@ -49,7 +47,7 @@ class DefaultObservable<I, O> implements Observable<O> {
             @Override
             public void onError(Throwable throwable) {
                 if (isClosed.compareAndSet(false, true)) {
-                    nextObserver.onError(throwable);
+                    Try.run(() -> nextObserver.onError(throwable));
                     closeableRef.getAndSet(Closeable.empty()).close();
                 }
             }
@@ -59,6 +57,8 @@ class DefaultObservable<I, O> implements Observable<O> {
                 if (!isClosed.get()) {
                     try {
                         nextObserver.onNext(item);
+                    } catch (IgnoredException e) {
+                        throw new RuntimeException(e.getCause());
                     } catch (ResubscribeException e) {
                         subscribe(observer);
                     } catch (Exception e) {
@@ -70,7 +70,7 @@ class DefaultObservable<I, O> implements Observable<O> {
 
         ImmutableList<Closeable> closeables = ImmutableList.empty();
 
-        for (Observable<I> observable : previousObservables) {
+        for (Observable<I> observable : previous) {
             if (isClosed.get()) {
                 closeableRef.getAndSet(Closeable.empty()).close(); // TODO: this right?
                 break;
