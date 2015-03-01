@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class Distinct<T> implements Action2<T, Observer<T>> {
 
+    // TODO: this will need cleanup
     private final Set<T> previousItems = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     @Override
