@@ -1,8 +1,6 @@
 package com.benbarron.react;
 
 import com.benbarron.react.function.*;
-import com.benbarron.react.function.Action1;
-import com.benbarron.react.function.Action2;
 import com.benbarron.react.lang.Closeable;
 import com.benbarron.react.lang.ImmutableList;
 import com.benbarron.react.lang.Try;
@@ -34,7 +32,7 @@ public interface Observable<T> {
     }
 
     default Observable<T> doSubscribe(Func2<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
-        return new DefaultObservable<>(ImmutableList.from(this), action, null);
+        return new OnSubscribeObservable<>(ImmutableList.from(this), action);
     }
 
     /*default ConnectableObservable<T> publish() {
@@ -96,7 +94,7 @@ public interface Observable<T> {
     }
 
     default <R> Observable<R> x(Func1<Observer<R>, Observer<T>> action) {
-        return new DefaultObservable<>(ImmutableList.from(this), null, action);
+        return new OnObserveObservable<>(ImmutableList.from(this), action);
     }
 
 
@@ -105,6 +103,6 @@ public interface Observable<T> {
     }
 
     static <T> Observable<T> generate(Func1<Observer<T>, Closeable> observer) {
-        return new DefaultObservable<>(null, (co, o) -> observer.run(o), null);
+        return new OnSubscribeObservable<>(null, (co, o) -> observer.run(o));
     }
 }

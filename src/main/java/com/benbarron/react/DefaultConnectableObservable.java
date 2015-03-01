@@ -1,20 +1,16 @@
 package com.benbarron.react;
 
 import com.benbarron.react.lang.Closeable;
+import com.benbarron.react.lang.ImmutableList;
 
-import java.util.Collection;
-import java.util.LinkedList;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicReference;
 
 class DefaultConnectableObservable<O> implements ConnectableObservable<O> {
 
-    private final Collection<Observable<O>> previous;
-    private final Collection<Observer<O>> next = new ConcurrentLinkedQueue<>();
+    private final ImmutableList<Observable<O>> previous;
+    private final AtomicReference<ImmutableList<Observer<O>>> next = new AtomicReference<>(ImmutableList.empty());
 
-    DefaultConnectableObservable(Collection<Observable<O>> previous) {
+    DefaultConnectableObservable(ImmutableList<Observable<O>> previous) {
         this.previous = previous;
     }
 
@@ -25,6 +21,7 @@ class DefaultConnectableObservable<O> implements ConnectableObservable<O> {
 
     @Override
     public Closeable subscribe(Observer<O> observer) {
-        return Closeable.empty();
+        next.getAndUpdate(previous -> previous.add(observer));
+        return () -> next.getAndUpdate(previous -> previous.remove(observer));
     }
 }

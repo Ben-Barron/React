@@ -5,7 +5,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Provides a mechanism for releasing resources.
  */
-@FunctionalInterface
 public interface Closeable {
 
     /**
