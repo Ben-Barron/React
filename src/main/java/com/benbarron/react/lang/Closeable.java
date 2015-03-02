@@ -35,7 +35,13 @@ public interface Closeable {
         AtomicBoolean isClosed = new AtomicBoolean(false);
         return () -> {
             if (isClosed.compareAndSet(false, true)) {
-                Try.forEach(closeables, Closeable::close);
+                for (Closeable closeable: closeables) {
+                    try {
+                        closeable.close();
+                    } catch (Exception e) {
+                        // TODO: add to some throwable
+                    }
+                }
             }
         };
     }

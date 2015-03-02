@@ -99,7 +99,7 @@ public interface Observable<T> {
     }
 
 
-    static <T> Observable<T> generate(com.benbarron.react.function.Action1<Observer<T>> observer) {
+    static <T> Observable<T> generate(Action1<Observer<T>> observer) {
         return generate(o -> {
             observer.run(o);
             return Closeable.empty();

@@ -41,7 +41,7 @@ public class ImmutableList<T> implements Iterable<T> {
         };
     }
 
-    public ImmutableList<T> remove(T item) {
+    public ImmutableList<T> remove(Object item) {
         T[] newItems = items;
 
         for (int i = 0; i < items.length; i++) {

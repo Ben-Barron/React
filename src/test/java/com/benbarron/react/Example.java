@@ -7,8 +7,8 @@ public class Example {
 
     @Test
     public void test() {
-        Observable<Boolean> os = Observable.generate(
-                (Observer<String> o) -> {
+        Observable.<String>generate(
+                (o) -> {
                     o.onNext("hey");
                     o.onNext("ho");
                     o.onNext("hey");
@@ -18,7 +18,8 @@ public class Example {
                 .asObservable()
                 .distinctUntilChanged()
                 .distinct()
-                .any((i) ->  { throw new Exception(); });
+                .any((i) ->  { throw new Exception(); })
+                .ox((b, o) -> o.onNext("S"));
 
 
         //os.publish().connect();
