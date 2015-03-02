@@ -7,7 +7,7 @@ public class Example {
 
     @Test
     public void test() {
-        Observable<String> os = Observable.generate(
+        Observable<Boolean> os = Observable.generate(
                 (Observer<String> o) -> {
                     o.onNext("hey");
                     o.onNext("ho");
@@ -15,7 +15,10 @@ public class Example {
 
                     System.out.println("done");
                 })
-                .asObservable();
+                .asObservable()
+                .distinctUntilChanged()
+                .distinct()
+                .any((i) ->  { throw new Exception(); });
 
 
         //os.publish().connect();

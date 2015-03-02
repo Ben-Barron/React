@@ -1,4 +1,4 @@
-package com.benbarron.react.operator;
+package com.benbarron.react.internal.operator;
 
 import com.benbarron.react.Observer;
 import com.benbarron.react.function.Func1;

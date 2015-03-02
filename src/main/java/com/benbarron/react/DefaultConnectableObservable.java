@@ -3,6 +3,7 @@ package com.benbarron.react;
 import com.benbarron.react.lang.Closeable;
 import com.benbarron.react.lang.ImmutableList;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 class DefaultConnectableObservable<O> implements ConnectableObservable<O> {
@@ -16,7 +17,12 @@ class DefaultConnectableObservable<O> implements ConnectableObservable<O> {
 
     @Override
     public Closeable connect() {
-        return Closeable.empty();
+        AtomicBoolean isConnected = new AtomicBoolean(true);
+        return () -> {
+            if (isConnected.compareAndSet(true, false)) {
+                // TODO: close here
+            }
+        };
     }
 
     @Override

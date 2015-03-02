@@ -1,12 +1,13 @@
 package com.benbarron.react;
 
 import com.benbarron.react.function.*;
+import com.benbarron.react.internal.exception.OnNextException;
 import com.benbarron.react.lang.Closeable;
 import com.benbarron.react.lang.ImmutableList;
 import com.benbarron.react.lang.Try;
-import com.benbarron.react.operator.Any;
-import com.benbarron.react.operator.Distinct;
-import com.benbarron.react.operator.DistinctUntilChanged;
+import com.benbarron.react.internal.operator.Any;
+import com.benbarron.react.internal.operator.Distinct;
+import com.benbarron.react.internal.operator.DistinctUntilChanged;
 
 /**
  * Represents a stream of push-based notifications.
@@ -20,24 +21,45 @@ public interface Observable<T> {
     }
 
     default Observable<Boolean> any(Predicate<T> predicate) {
-        return x(new Any<>(predicate));
+        return ox(new Any<>(predicate));
     }
 
     default Observable<T> distinct() {
-        return x(new Distinct<>());
+        return ox(new Distinct<>());
     }
 
     default Observable<T> distinctUntilChanged() {
-        return x(new DistinctUntilChanged<>());
+        return ox(new DistinctUntilChanged<>());
     }
 
-    default Observable<T> doSubscribe(Func2<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
-        return new OnSubscribeObservable<>(ImmutableList.from(this), action);
+    default <R> Observable<R> ox(Action2<T, Observer<R>> action) {
+        return ox(o -> {
+            return new Observer<T>() {
+                @Override
+                public void onComplete() {
+                    o.onComplete();
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    o.onError(throwable);
+                }
+
+                @Override
+                public void onNext(T item) {
+                    Try.run(() -> action.run(item, o));
+                }
+            };
+        });
     }
 
-    /*default ConnectableObservable<T> publish() {
-        return new DefaultConnectableObservable<>(Arrays.asList(this));
-    }*/
+    default <R> Observable<R> ox(Func1<Observer<R>, Observer<T>> action) {
+        return new OnObserveObservable<>(ImmutableList.from(this), action);
+    }
+
+    default ConnectableObservable<T> publish() {
+        return new DefaultConnectableObservable<>(ImmutableList.from(this));
+    }
 
     default Closeable subscribe() {
         return subscribe(i -> {});
@@ -48,7 +70,7 @@ public interface Observable<T> {
     }
 
     default Closeable subscribe(Action1<T> onNext, Action onComplete) {
-        return subscribe(onNext, onComplete, t -> { throw new RuntimeException(t); });
+        return subscribe(onNext, onComplete, t -> { throw new OnNextException(t); });
     }
 
     default Closeable subscribe(Action1<T> onNext, Action onComplete, Action1<Throwable> onError) {
@@ -72,37 +94,19 @@ public interface Observable<T> {
 
     Closeable subscribe(Observer<T> observer);
 
-    default <R> Observable<R> x(Action2<T, Observer<R>> action) {
-        return x(o -> {
-            return new Observer<T>() {
-                @Override
-                public void onComplete() {
-                    o.onComplete();
-                }
+    default Observable<T> sx(Func2<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
+        return new OnSubscribeObservable<>(ImmutableList.from(this), action);
+    }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    o.onError(throwable);
-                }
 
-                @Override
-                public void onNext(T item) {
-                    Try.run(() -> action.run(item, o));
-                }
-            };
+    static <T> Observable<T> generate(com.benbarron.react.function.Action1<Observer<T>> observer) {
+        return generate(o -> {
+            observer.run(o);
+            return Closeable.empty();
         });
     }
 
-    default <R> Observable<R> x(Func1<Observer<R>, Observer<T>> action) {
-        return new OnObserveObservable<>(ImmutableList.from(this), action);
-    }
-
-
-    static <T> Observable<T> generate(Action1<Observer<T>> observer) {
-        return generate(o -> { observer.run(o); return Closeable.empty(); });
-    }
-
     static <T> Observable<T> generate(Func1<Observer<T>, Closeable> observer) {
-        return new OnSubscribeObservable<>(null, (co, o) -> observer.run(o));
+        return new OnGenerateObservable<>(observer::run);
     }
 }
