@@ -9,30 +9,6 @@ import java.util.LinkedList;
 
 public interface Try {
 
-    static <T> void forEach(Iterable<T> iterable, Action1<T> action) {
-        LinkedList<Exception> exceptions = new LinkedList<>();
-
-        iterable.forEach(i -> {
-            try {
-                action.run(i);
-            } catch (Exception e) {
-                exceptions.add(e);
-            }
-        });
-
-        if (!exceptions.isEmpty()) {
-            // TODO: throw a combined excetpion;
-        }
-    }
-
-    static <T> T get(Func<T> producer) {
-        try {
-            return producer.run();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     static void ignore(Action action) {
         try {
             action.run();

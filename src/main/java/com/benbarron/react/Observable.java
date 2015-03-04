@@ -54,7 +54,7 @@ public interface Observable<T> {
     }
 
     default <R> Observable<R> ox(Func1<Observer<R>, Observer<T>> action) {
-        return new OnObserveObservable<>(ImmutableList.from(this), action);
+        return new ObservingObservable<>(ImmutableList.from(this), action);
     }
 
     default ConnectableObservable<T> publish() {
@@ -95,7 +95,7 @@ public interface Observable<T> {
     Closeable subscribe(Observer<T> observer);
 
     default Observable<T> sx(Func2<Iterable<Observable<T>>, Observer<T>, Closeable> action) {
-        return new OnSubscribeObservable<>(ImmutableList.from(this), action);
+        return new SubscribingObservable<>(ImmutableList.from(this), action);
     }
 
 
@@ -107,6 +107,6 @@ public interface Observable<T> {
     }
 
     static <T> Observable<T> generate(Func1<Observer<T>, Closeable> observer) {
-        return new OnGenerateObservable<>(observer::run);
+        return new ObservableGeneratingObservable<>(observer::run);
     }
 }

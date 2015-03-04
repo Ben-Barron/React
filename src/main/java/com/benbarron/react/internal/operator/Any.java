@@ -29,7 +29,16 @@ public class Any<T> implements Func1<Observer<Boolean>, Observer<T>> {
 
             @Override
             public void onNext(T item) {
-                if (Try.get(() -> predicate.test(item))) {
+                boolean predicateResult = false;
+
+                try {
+                    predicateResult = predicate.test(item);
+                } catch (Exception e) {
+                    onError(e); // TODO: do something nice to tell the user, wrap in an ANY exception?
+                    return;
+                }
+
+                if (predicateResult) {
                     observer.onNext(true);
                     observer.onComplete();
                 }
